@@ -1,0 +1,23 @@
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+
+# Storage and data
+backend/storage/videos/
+backend/storage/database.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
