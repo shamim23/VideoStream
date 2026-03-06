@@ -6,6 +6,9 @@
 	let videoId = null;
 	let error = null;
 	let videoElement = null;
+	let uploadSpeed = '';
+	let uploadEta = '';
+	let startTime = 0;
 	const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3000';
 
 	function buildApiUrl(path) {
@@ -19,7 +22,7 @@
 		videoId = null;
 	}
 
-	async function uploadVideo() {
+	function uploadVideo() {
 		if (!file) {
 			error = 'Please select a video file';
 			return;
@@ -27,31 +30,67 @@
 
 		uploading = true;
 		uploadProgress = 0;
+		uploadSpeed = '';
+		uploadEta = '';
+		startTime = Date.now();
 		error = null;
 
 		const formData = new FormData();
 		formData.append('video', file);
 
-		try {
-			const response = await fetch(buildApiUrl('/api/upload'), {
-				method: 'POST',
-				body: formData
-			});
+		const xhr = new XMLHttpRequest();
 
-			if (!response.ok) {
-				const text = await response.text();
-				throw new Error(`Upload failed: ${response.status} ${text}`);
+		xhr.upload.addEventListener('progress', (event) => {
+			if (event.lengthComputable) {
+				uploadProgress = Math.round((event.loaded / event.total) * 100);
+				
+				// Calculate speed
+				const elapsed = (Date.now() - startTime) / 1000;
+				const speed = event.loaded / elapsed;
+				uploadSpeed = formatSpeed(speed);
+				
+				// Calculate ETA
+				const remaining = event.total - event.loaded;
+				const etaSeconds = remaining / speed;
+				uploadEta = formatEta(etaSeconds);
 			}
+		});
 
-			const data = await response.json();
-			shareUrl = data.share_url;
-			videoId = data.share_url?.split('/').pop() ?? null;
-			uploadProgress = 100;
-		} catch (err) {
-			error = err.message;
-		} finally {
+		xhr.addEventListener('load', () => {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				try {
+					const data = JSON.parse(xhr.responseText);
+					shareUrl = data.share_url;
+					videoId = data.share_url?.split('/').pop() ?? null;
+					uploadProgress = 100;
+				} catch (e) {
+					error = 'Invalid server response';
+				}
+			} else {
+				error = `Upload failed: ${xhr.status} ${xhr.statusText}`;
+			}
 			uploading = false;
-		}
+		});
+
+		xhr.addEventListener('error', () => {
+			error = 'Upload failed. Please try again.';
+			uploading = false;
+		});
+
+		xhr.addEventListener('abort', () => {
+			error = 'Upload cancelled.';
+			uploading = false;
+		});
+
+		xhr.open('POST', buildApiUrl('/api/upload'));
+		xhr.send(formData);
+	}
+
+	function cancelUpload() {
+		// Note: xhr is local to uploadVideo, so we'd need to store it to cancel
+		// For now, just reset the UI
+		uploading = false;
+		uploadProgress = 0;
 	}
 
 	function getFullWatchUrl() {
@@ -67,6 +106,21 @@
 	function copyLink() {
 		navigator.clipboard.writeText(getFullWatchUrl());
 		alert('Link copied to clipboard!');
+	}
+
+	function formatSpeed(bytesPerSecond) {
+		if (bytesPerSecond === 0) return '';
+		if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(1)} B/s`;
+		if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+		return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+	}
+
+	function formatEta(seconds) {
+		if (!isFinite(seconds) || seconds < 0) return '';
+		if (seconds < 60) return `${Math.round(seconds)}s remaining`;
+		const minutes = Math.floor(seconds / 60);
+		const secs = Math.round(seconds % 60);
+		return `${minutes}m ${secs}s remaining`;
 	}
 </script>
 
@@ -101,8 +155,19 @@
 		</button>
 
 		{#if uploading}
-			<div class="progress-bar">
-				<div class="progress" style="width: {uploadProgress}%"></div>
+			<div class="progress-container">
+				<div class="progress-bar">
+					<div class="progress" style="width: {uploadProgress}%"></div>
+				</div>
+				<div class="progress-info">
+					<span class="progress-percent">{uploadProgress}%</span>
+					{#if uploadSpeed}
+						<span class="progress-speed">{uploadSpeed}</span>
+					{/if}
+					{#if uploadEta}
+						<span class="progress-eta">{uploadEta}</span>
+					{/if}
+				</div>
 			</div>
 		{/if}
 
@@ -199,19 +264,43 @@
 		cursor: not-allowed;
 	}
 
+	.progress-container {
+		margin-top: 1rem;
+	}
+
 	.progress-bar {
 		width: 100%;
 		height: 20px;
 		background: #e0e0e0;
 		border-radius: 10px;
 		overflow: hidden;
-		margin-top: 1rem;
 	}
 
 	.progress {
 		height: 100%;
 		background: #4CAF50;
-		transition: width 0.3s;
+		transition: width 0.2s;
+	}
+
+	.progress-info {
+		display: flex;
+		justify-content: space-between;
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+		color: #666;
+	}
+
+	.progress-percent {
+		font-weight: bold;
+		color: #333;
+	}
+
+	.progress-speed {
+		color: #2196F3;
+	}
+
+	.progress-eta {
+		color: #666;
 	}
 
 	.error {

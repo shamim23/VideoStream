@@ -13,9 +13,11 @@ use sqlx::sqlite::SqlitePoolOptions;
 
 mod api;
 mod domain;
+mod service;
 mod storage;
 
 use api::{health_check, upload_handler, stream_handler, AppState};
+use service::VideoService;
 use storage::LocalStorage;
 
 #[tokio::main]
@@ -61,7 +63,8 @@ async fn main() -> anyhow::Result<()> {
     // Initialize storage
     let storage: Arc<dyn storage::Storage> = Arc::new(LocalStorage::new(&storage_path));
 
-    let state = Arc::new(AppState { storage, db });
+    let video_service = Arc::new(VideoService::new(storage, db));
+    let state = Arc::new(AppState { video_service });
 
     let cors = CorsLayer::new()
         .allow_origin(["http://localhost:5173".parse().unwrap()])
