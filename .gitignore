@@ -8,6 +8,10 @@ dist/
 build/
 *.log
 
+# SvelteKit
+.svelte-kit/
+.vite/
+
 # Storage and data
 backend/storage/videos/
 backend/storage/database.db
