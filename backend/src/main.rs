@@ -15,8 +15,9 @@ mod api;
 mod domain;
 mod service;
 mod storage;
+mod transcode;
 
-use api::{health_check, upload_handler, stream_handler, AppState};
+use api::{health_check, upload_handler, stream_handler, hls_handler, AppState};
 use service::VideoService;
 use storage::LocalStorage;
 
@@ -51,12 +52,20 @@ async fn main() -> anyhow::Result<()> {
             content_type TEXT NOT NULL,
             size_bytes INTEGER NOT NULL,
             storage_path TEXT NOT NULL,
+            hls_ready BOOLEAN DEFAULT FALSE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         "#
     )
     .execute(&db)
     .await?;
+    
+    // Add hls_ready column if it doesn't exist (for existing databases)
+    let _ = sqlx::query(
+        "ALTER TABLE videos ADD COLUMN hls_ready BOOLEAN DEFAULT FALSE"
+    )
+    .execute(&db)
+    .await;
 
     println!("Database initialized");
 
@@ -75,6 +84,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(health_check))
         .route("/api/upload", post(upload_handler))
         .route("/api/watch/:id", get(stream_handler))
+        .route("/api/watch/:id/*file", get(hls_handler))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(1024 * 1024 * 1024)) // 1GB limit
         .layer(cors)

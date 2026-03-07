@@ -17,3 +17,4 @@ async-trait = "0.1"
 thiserror = "1.0"
 futures-util = "0.3"
 tokio-util = { version = "0.7", features = ["io"] }
+ffmpeg-next = "7.0"

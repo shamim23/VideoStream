@@ -10,6 +10,7 @@ pub struct Video {
     pub content_type: String,
     pub size_bytes: i64,
     pub storage_path: String,
+    pub hls_ready: bool,
     pub created_at: DateTime<Utc>,
 }
 
@@ -28,6 +29,7 @@ impl Video {
             content_type,
             size_bytes,
             storage_path,
+            hls_ready: false,
             created_at: Utc::now(),
         }
     }
@@ -47,6 +49,7 @@ impl FromRow<'_, sqlx::sqlite::SqliteRow> for Video {
             content_type: row.try_get("content_type")?,
             size_bytes: row.try_get("size_bytes")?,
             storage_path: row.try_get("storage_path")?,
+            hls_ready: row.try_get("hls_ready").unwrap_or(false),
             created_at: row.try_get("created_at")?,
         })
     }

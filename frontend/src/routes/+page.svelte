@@ -1,4 +1,7 @@
 <script>
+	import { onMount, onDestroy } from 'svelte';
+	import Hls from 'hls.js';
+	
 	let file = null;
 	let uploading = false;
 	let uploadProgress = 0;
@@ -6,6 +9,8 @@
 	let videoId = null;
 	let error = null;
 	let videoElement = null;
+	let hls = null;
+	let hlsStatus = 'waiting'; // waiting, processing, ready, error
 	let uploadSpeed = '';
 	let uploadEta = '';
 	let startTime = 0;
@@ -108,6 +113,104 @@
 		alert('Link copied to clipboard!');
 	}
 
+	// Initialize HLS player when video element is available
+	function initHlsPlayer() {
+		if (!videoElement || !videoId) return;
+		
+		const hlsUrl = getHlsUrl();
+		hlsStatus = 'processing';
+		
+		// Check if HLS is ready first
+		checkHlsStatus().then(ready => {
+			if (!ready) {
+				hlsStatus = 'processing';
+				// Poll for HLS readiness
+				const interval = setInterval(async () => {
+					const isReady = await checkHlsStatus();
+					if (isReady) {
+						clearInterval(interval);
+						hlsStatus = 'ready';
+						setupHls(hlsUrl);
+					}
+				}, 2000);
+				// Stop polling after 2 minutes
+				setTimeout(() => clearInterval(interval), 120000);
+			} else {
+				hlsStatus = 'ready';
+				setupHls(hlsUrl);
+			}
+		});
+	}
+
+	function setupHls(url) {
+		if (!videoElement) return;
+		
+		// Clean up existing HLS instance
+		if (hls) {
+			hls.destroy();
+			hls = null;
+		}
+		
+		if (Hls.isSupported()) {
+			hls = new Hls({
+				startLevel: -1, // Auto quality selection
+				capLevelToPlayerSize: true,
+				maxBufferLength: 30,
+			});
+			
+			hls.loadSource(url);
+			hls.attachMedia(videoElement);
+			
+			hls.on(Hls.Events.MANIFEST_PARSED, () => {
+				console.log('HLS manifest loaded');
+			});
+			
+			hls.on(Hls.Events.ERROR, (event, data) => {
+				console.error('HLS error:', data);
+				if (data.fatal) {
+					hlsStatus = 'error';
+				}
+			});
+		} else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+			// Native HLS support (Safari)
+			videoElement.src = url;
+		}
+	}
+
+	async function checkHlsStatus() {
+		try {
+			const response = await fetch(buildApiUrl(`/api/watch/${videoId}/playlist.m3u8`), {
+				method: 'HEAD'
+			});
+			return response.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	function getHlsUrl() {
+		if (!videoId) return '';
+		return buildApiUrl(`/api/watch/${videoId}/playlist.m3u8`);
+	}
+
+	onMount(() => {
+		if (videoId) {
+			initHlsPlayer();
+		}
+	});
+
+	onDestroy(() => {
+		if (hls) {
+			hls.destroy();
+			hls = null;
+		}
+	});
+
+	// Watch for videoId changes to init HLS
+	$: if (videoId && videoElement) {
+		initHlsPlayer();
+	}
+
 	function formatSpeed(bytesPerSecond) {
 		if (bytesPerSecond === 0) return '';
 		if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(1)} B/s`;
@@ -188,12 +291,23 @@
 
 			<div class="player-section">
 				<h3>Preview:</h3>
+				{#if hlsStatus === 'processing'}
+					<div class="hls-status processing">
+						<p>⏳ Transcoding video for adaptive streaming...</p>
+						<p class="hls-note">This may take a moment. The video will play automatically when ready.</p>
+					</div>
+				{:else if hlsStatus === 'error'}
+					<div class="hls-status error">
+						<p>❌ Failed to load video player</p>
+						<p class="hls-note">You can still <a href={getVideoStreamUrl()} target="_blank">download the original file</a></p>
+					</div>
+				{/if}
 				<video 
 					bind:this={videoElement}
-					src={getVideoStreamUrl()} 
 					controls 
 					width="100%"
 					poster=""
+					on:loadedmetadata={() => hlsStatus = 'ready'}
 				>
 					Your browser does not support the video tag.
 				</video>
@@ -339,5 +453,33 @@
 	.player-section video {
 		border-radius: 4px;
 		max-width: 100%;
+	}
+
+	.hls-status {
+		padding: 1rem;
+		border-radius: 8px;
+		margin-bottom: 1rem;
+		text-align: center;
+	}
+
+	.hls-status.processing {
+		background: #fff3cd;
+		color: #856404;
+		border: 1px solid #ffeaa7;
+	}
+
+	.hls-status.error {
+		background: #f8d7da;
+		color: #721c24;
+		border: 1px solid #f5c6cb;
+	}
+
+	.hls-status p {
+		margin: 0.5rem 0;
+	}
+
+	.hls-note {
+		font-size: 0.9rem;
+		opacity: 0.8;
 	}
 </style>
