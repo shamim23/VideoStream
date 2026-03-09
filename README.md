@@ -12,8 +12,31 @@ A minimal private video streaming service with clean architecture. Upload videos
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended)
 
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+
+**1. Clone and enter the project:**
+```bash
+cd video-app
+```
+
+**2. Start everything:**
+```bash
+docker-compose up --build
+```
+
+**3. Open the app:**
+Navigate to `http://localhost:5173` in your browser.
+
+**To scale horizontally** (run 3 backend instances):
+```bash
+docker-compose up --scale backend=3
+```
+
+### Option 2: Local Development
+
+**Prerequisites:**
 - [Rust](https://rustup.rs/) (stable toolchain)
 - [Node.js](https://nodejs.org/) 18+ and npm
 
@@ -22,21 +45,14 @@ A minimal private video streaming service with clean architecture. Upload videos
 > source "$HOME/.cargo/env"
 > ```
 
-### Install & Run
-
-**1. Clone and enter the project:**
-```bash
-cd video-app
-```
-
-**2. Start the backend:**
+**1. Start the backend:**
 ```bash
 cd backend
 cargo run
 ```
 The backend will start on `http://127.0.0.1:3000`.
 
-**3. Start the frontend** (in a new terminal):
+**2. Start the frontend** (in a new terminal):
 ```bash
 cd frontend
 npm install
@@ -44,7 +60,7 @@ npm run dev
 ```
 The frontend will start on `http://localhost:5173`.
 
-**4. Open the app:**
+**3. Open the app:**
 Navigate to `http://localhost:5173` in your browser.
 
 ---
@@ -83,6 +99,31 @@ video-app/
 ```
 
 ---
+
+## Docker Commands
+
+```bash
+# Start all services
+docker-compose up
+
+# Start with 3 backend instances (horizontal scaling demo)
+docker-compose up --scale backend=3
+
+# Rebuild after code changes
+docker-compose up --build
+
+# Run in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop everything
+docker-compose down
+
+# Clean up volumes (removes uploaded videos)
+docker-compose down -v
+```
 
 ## Development
 
@@ -173,6 +214,8 @@ For detailed architecture documentation, see:
 | Backend | Rust (Axum, Tokio) |
 | Database | SQLite (zero config) |
 | Storage | Local filesystem (S3-ready) |
+| Deployment | Docker & Docker Compose |
+| Load Balancer | Nginx |
 
 ---
 
