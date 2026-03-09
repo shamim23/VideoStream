@@ -89,26 +89,6 @@ pub async fn stream_handler(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
-/// Handler for HLS playlist and segment files
-/// Path: /api/watch/:id/playlist.m3u8 or /api/watch/:id/1080p_001.ts
-pub async fn hls_handler(
-    State(state): State<Arc<AppState>>,
-    Path((id, file)): Path<(String, String)>,
-) -> Result<Response, (StatusCode, String)> {
-    let (data, content_type) = state
-        .video_service
-        .get_hls_file(&id, &file)
-        .await
-        .map_err(map_service_error)?;
-
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, content_type)
-        .header(header::CACHE_CONTROL, "public, max-age=3600")
-        .body(Body::from(data))
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
-}
-
 pub async fn health_check() -> &'static str {
     "Video service ready!"
 }

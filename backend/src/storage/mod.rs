@@ -19,12 +19,6 @@ pub trait Storage: Send + Sync {
     ) -> Result<Box<dyn AsyncRead + Unpin + Send>>;
     async fn get_size(&self, video: &Video) -> Result<u64>;
     async fn delete(&self, video: &Video) -> Result<()>;
-    
-    /// Get the path to the original video file
-    fn get_video_path(&self, video_id: &str, storage_path: &str) -> PathBuf;
-    
-    /// Get the path to an HLS file
-    fn get_hls_file_path(&self, video_id: &str, storage_path: &str, filename: &str) -> PathBuf;
 }
 
 pub struct LocalStorage {
@@ -89,13 +83,5 @@ impl Storage for LocalStorage {
         let dir = self.base_path.join(&video.storage_path);
         tokio::fs::remove_dir_all(&dir).await?;
         Ok(())
-    }
-    
-    fn get_video_path(&self, _video_id: &str, storage_path: &str) -> PathBuf {
-        self.base_path.join(storage_path).join("original.mp4")
-    }
-    
-    fn get_hls_file_path(&self, _video_id: &str, storage_path: &str, filename: &str) -> PathBuf {
-        self.base_path.join(storage_path).join("hls").join(filename)
     }
 }

@@ -8,6 +8,7 @@
 
 <main>
 	<div class="video-container">
+		<!-- svelte-ignore a11y-media-has-caption -->
 		<video 
 			src={videoUrl} 
 			controls 
