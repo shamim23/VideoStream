@@ -45,6 +45,8 @@ docker-compose up --scale backend=3
 > source "$HOME/.cargo/env"
 > ```
 
+The local setup and Docker setup are independent - you can use either one. Local dev is faster for code changes, Docker is better for testing production-like deployment.
+
 **1. Start the backend:**
 ```bash
 cd backend
@@ -101,6 +103,8 @@ video-app/
 ---
 
 ## Docker Commands
+
+> **Note:** In Docker mode, the frontend connects to the API through nginx at `http://localhost:8080/api`. In local mode, it connects directly to `http://127.0.0.1:3000`. The frontend automatically handles both.
 
 ```bash
 # Start all services
