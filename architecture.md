@@ -20,8 +20,9 @@ This document describes the architecture of a minimal private video streaming se
 5. [Path to Cloud Storage](#path-to-cloud-storage-s3)
 6. [Adaptive Streaming Trade-offs](#adaptive-streaming-hlsdash-trade-offs)
 7. [Horizontal Scaling Plan](#horizontal-scaling-plan)
-8. [Security Considerations](#security-considerations)
-9. [Cost Analysis](#cost-analysis)
+8. [Docker Deployment & Horizontal Scaling](#docker-deployment--horizontal-scaling)
+9. [Security Considerations](#security-considerations)
+10. [Cost Analysis](#cost-analysis)
 
 ---
 
@@ -445,6 +446,126 @@ Changes needed:
 
 ---
 
+## Docker Deployment & Horizontal Scaling
+
+### Local Development vs Docker Deployment
+
+The application supports two deployment modes:
+
+| Aspect | Local Development | Docker Deployment |
+|--------|------------------|-------------------|
+| **Setup** | Install Rust, Node, ffmpeg manually | `docker-compose up` |
+| **Services** | Run backend + frontend separately | All-in-one orchestrated stack |
+| **Scaling** | Single instance only | Horizontal scaling demonstrated |
+| **Use Case** | Development, debugging | Assessment demo, production-like |
+
+### Docker Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Docker Network                                   │
+│                                                                             │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐              │
+│  │   Nginx      │      │   Backend    │      │   Backend    │              │
+│  │ Load Balancer│◄────►│  Instance 1  │◄────►│  Instance 2  │  ...         │
+│  │   (Port 80)  │      │  (Port 3000) │      │  (Port 3000) │              │
+│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘              │
+│         │                     │                     │                       │
+│         │            ┌────────┴────────┐            │                       │
+│         │            │  Shared Volume  │            │                       │
+│         │            │  /app/storage   │            │                       │
+│         │            └────────┬────────┘            │                       │
+│         │                     │                     │                       │
+│         │            ┌────────┴────────┐            │                       │
+│         └───────────►│    Frontend     │◄───────────┘                       │
+│                      │   (Port 3000)   │                                    │
+│                      └─────────────────┘                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+**1. Nginx Load Balancer**
+- Dynamic backend discovery via Docker DNS
+- Round-robin traffic distribution
+- Health checks with automatic failover
+- Video-optimized configuration (buffering disabled, large upload limits)
+
+**2. Backend Service (Stateless)**
+- Multi-stage Docker build (builder + runtime)
+- Health check endpoint for monitoring
+- Shared storage volume for video files
+- Scales horizontally: `docker-compose up --scale backend=3`
+
+**3. Frontend Service**
+- Pre-built during Docker build
+- Serves static files via Node.js
+- Connects to backend through Nginx
+
+**4. Shared Storage Volume**
+- Persists videos across container restarts
+- Accessible to all backend instances
+- Upgrade path: Replace with NFS/S3 for multi-node
+
+### Running with Docker
+
+```bash
+# Start entire stack
+docker-compose up -d
+
+# Access application
+open http://localhost:8080
+
+# Scale backend horizontally
+docker-compose up -d --scale backend=3
+
+# View logs
+docker-compose logs -f backend
+
+# Stop everything
+docker-compose down
+```
+
+### Why This Demonstrates Scaling Knowledge
+
+| Concept | Implementation |
+|---------|---------------|
+| **Stateless Services** | Backend containers are interchangeable |
+| **Load Balancing** | Nginx distributes requests across backends |
+| **Shared State** | Volume provides consistent storage |
+| **Health Monitoring** | Container + nginx health checks |
+| **Single-Command Scaling** | `--scale backend=N` adds capacity |
+
+### Production Path
+
+**Phase 1: Docker Compose** (Current)
+- Single machine, demonstrates concepts
+- Perfect for assessment/demo
+
+**Phase 2: Kubernetes**
+- Replace `docker-compose up --scale` with `kubectl scale deployment`
+- Add ingress controller, secrets management
+
+**Phase 3: Cloud-Native**
+- AWS ECS Fargate / Google Cloud Run
+- Managed PostgreSQL (RDS/Cloud SQL)
+- S3/Backblaze B2 for storage
+- CloudFront for CDN
+
+### Detailed Documentation
+
+For complete Docker deployment documentation including:
+- Component deep-dives
+- Environment configuration
+- Cost analysis (55% savings vs EC2)
+- Troubleshooting guide
+- Commands cheat sheet
+
+**See: [`DOCKER_ARCHITECTURE.md`](./DOCKER_ARCHITECTURE.md)**
+
+---
+
 ## Documentation Index
 
 | Document | Purpose |
@@ -453,7 +574,8 @@ Changes needed:
 | [`STORAGE.md`](./STORAGE.md) | Storage layer details, S3 migration |
 | [`CLOUD_INTEGRATION.md`](./CLOUD_INTEGRATION.md) | Cloud abstraction design |
 | [`STREAMING.md`](./STREAMING.md) | Streaming architecture, HLS trade-offs |
-| [`HLS_IMPLEMENTATION.md`](./HLS_IMPLEMENTATION.md) | HLS implementation guide (optional) |
+| [`HLS_IMPLEMENTATION.md`](./HLS_IMPLEMENTATION.md) | HLS implementation guide |
+| [`DOCKER_ARCHITECTURE.md`](./DOCKER_ARCHITECTURE.md) | Docker deployment & horizontal scaling |
 
 ---
 
@@ -465,11 +587,13 @@ This architecture delivers:
 ✅ **Clean separation of concerns** - Layered architecture with trait abstractions  
 ✅ **Horizontal scaling path** - Stateless design ready for load balancing  
 ✅ **Cloud migration path** - Trait-based storage enables S3 swap  
-✅ **Adaptive streaming path** - Documented HLS upgrade when needed  
+✅ **Adaptive streaming** - HLS with multi-quality transcoding  
+✅ **Docker deployment** - Single-command scaling with `docker-compose up --scale backend=3`  
 ✅ **Cost efficiency** - Starts at $0, scales cost-effectively  
 
 The design demonstrates senior-level engineering through:
 - **Appropriate abstraction** (Storage trait)
-- **Pragmatic trade-offs** (Range requests for MVP)
+- **Pragmatic trade-offs** (Range requests for MVP, HLS for production)
 - **Future-proofing** (clear scaling paths)
+- **Production readiness** (Docker, health checks, monitoring)
 - **Documentation** (architectural decisions explained)
