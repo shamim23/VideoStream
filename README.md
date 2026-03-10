@@ -14,32 +14,7 @@ A minimal private video streaming service with clean architecture. Upload videos
 
 ## Quick Start
 
-### Option 1: Docker (Recommended)
-
-**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-
-Docker runs the full stack including Nginx load balancer, backend (scalable), frontend, and automatic HLS transcoding.
-
-**1. Clone and enter the project:**
-```bash
-cd video-app
-```
-
-**2. Start everything:**
-```bash
-docker-compose up --build
-```
-
-**3. Open the app:**
-Navigate to `http://localhost:8080` in your browser.
-
-**Features in Docker mode:**
-- **HLS Adaptive Streaming** - Videos are automatically transcoded to multiple qualities (1080p/720p/480p/240p)
-- **Load Balancer** - Nginx distributes traffic across backend instances
-- **Horizontal Scaling** - Scale backend instances: `docker-compose up --scale backend=3`
-- **Shared Storage** - All instances access the same video files
-
-### Option 2: Local Development
+### Option 1: Local Development (Recommended for Development)
 
 **Prerequisites:**
 - [Rust](https://rustup.rs/) (stable toolchain)
@@ -74,6 +49,31 @@ The frontend will start on `http://localhost:5173` and proxy API requests to the
 
 **3. Open the app:**
 Navigate to `http://localhost:5173` in your browser.
+
+### Option 2: Docker (Recommended for Production Demo)
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+
+Docker runs the full stack including Nginx load balancer, backend (scalable), frontend, and automatic HLS transcoding.
+
+**1. Clone and enter the project:**
+```bash
+cd video-app
+```
+
+**2. Start everything:**
+```bash
+docker-compose up --build
+```
+
+**3. Open the app:**
+Navigate to `http://localhost:8080` in your browser.
+
+**Features in Docker mode:**
+- **HLS Adaptive Streaming** - Videos are automatically transcoded to multiple qualities (1080p/720p/480p/240p)
+- **Load Balancer** - Nginx distributes traffic across backend instances
+- **Horizontal Scaling** - Scale backend instances: `docker-compose up --scale backend=3`
+- **Shared Storage** - All instances access the same video files
 
 ---
 
