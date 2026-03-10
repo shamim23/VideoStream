@@ -517,8 +517,84 @@ For complete Docker deployment documentation including:
 
 ---
 
+## Future Work and Enhancements
+
+### CI/CD Pipeline
+
+A continuous integration and deployment pipeline would automate testing and deployment. The planned pipeline includes GitHub Actions workflows for:
+
+**Backend CI:**
+- Automated builds on pull requests
+- `cargo test` for unit and integration tests
+- `cargo clippy` for linting and code quality
+- `cargo fmt` for formatting checks
+- Security audits with `cargo audit`
+
+**Frontend CI:**
+- `npm run build` verification
+- Type checking with TypeScript
+- ESLint for code quality
+- Build artifact generation
+
+**Deployment Pipeline:**
+- Docker image builds on main branch merges
+- Automated deployment to staging environment
+- Integration tests against staging
+- Promotion to production with manual approval
+
+This pipeline ensures code quality and reduces deployment risk through automation.
+
+### Testing Strategy
+
+Comprehensive testing would cover all layers of the application:
+
+**Unit Tests:**
+- Service layer business logic
+- Range request parsing
+- Video validation logic
+- Storage trait implementations
+
+**Integration Tests:**
+- API endpoint testing with test database
+- Upload and streaming workflows
+- Error handling paths
+
+**End-to-End Tests:**
+- Browser automation testing upload flow
+- Video playback verification
+- Cross-browser compatibility
+
+**Load Testing:**
+- Concurrent upload handling
+- Streaming performance under load
+- Database connection pool limits
+
+Testing would use Rust's built-in test framework for backend and Vitest or Playwright for frontend.
+
+### Additional Production Features
+
+**Observability:**
+- Structured logging with tracing
+- Metrics collection (upload counts, streaming latency)
+- Health check endpoints for load balancers
+- Distributed tracing for request flows
+
+**Security Enhancements:**
+- Rate limiting per IP address
+- Content Security Policy headers
+- Input sanitization middleware
+- Request size validation
+
+**Operational Improvements:**
+- Graceful shutdown handling
+- Database connection pooling optimization
+- Caching layer for frequently accessed metadata
+- Background job monitoring
+
+---
+
 ## Summary
 
 The system design presents a clear evolutionary path from MVP to production. The current architecture prioritizes simplicity and fast time-to-stream while maintaining clean boundaries that enable future scaling. The Storage trait abstraction allows seamless migration from local filesystem to S3. HTTP Range Requests provide immediate functionality with a documented path to HLS adaptive streaming. The stateless design supports horizontal scaling through standard load balancing techniques.
 
-This design demonstrates senior engineering through appropriate abstraction, pragmatic trade-offs, and documented scaling paths. It delivers value immediately while building foundations for future growth without architectural dead ends.
+This design demonstrates senior engineering through appropriate abstraction, pragmatic trade-offs, and documented scaling paths. HTTP Range Requests provide immediate functionality suitable for the core requirements. The stateless design and Docker deployment demonstrate horizontal scaling capability. Documented future work including CI/CD pipelines and comprehensive testing show awareness of production requirements.
