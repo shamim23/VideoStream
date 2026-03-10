@@ -13,8 +13,8 @@ The design prioritizes fast time-to-stream for the MVP while maintaining clean a
 ### System Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Client (Browser)                                │
+┌────────────────────────────────────────────────────────────────────────────┐
+│                              Client (Browser)                              │
 │  ┌─────────────────────────────┐        ┌────────────────────────────────┐ │
 │  │    Upload Page (/)          │        │    Watch Page (/watch/:id)     │ │
 │  │    • File selection         │        │    • HTML5 video player        │ │
@@ -26,9 +26,9 @@ The design prioritizes fast time-to-stream for the MVP while maintaining clean a
                   │ HTTP/1.1 with multipart/form-data      │ HTTP/1.1 with Range headers
                   │                                        │
                   ▼                                        ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Backend (Axum + Tokio)                               │
-│                                                                              │
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         Backend (Axum + Tokio)                             │
+│                                                                            │
 │  ┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────┐  │
 │  │    API Layer         │───▶│   Service Layer      │───▶│ Storage Port │  │
 │  │    • /api/upload     │    │   • Video validation │    │  (trait)     │  │
