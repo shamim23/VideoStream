@@ -8,10 +8,16 @@
 	let uploadSpeed = '';
 	let uploadEta = '';
 	let startTime = 0;
-	const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3000';
+	const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? '';
 
 	function buildApiUrl(path) {
-		return `${apiBaseUrl}${path}`;
+		const base = apiBaseUrl.replace(/\/+$/, '');
+		const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+		if (!base) return normalizedPath;
+		if (base.endsWith('/api') && normalizedPath.startsWith('/api/')) {
+			return `${base}${normalizedPath.slice(4)}`;
+		}
+		return `${base}${normalizedPath}`;
 	}
 
 	function handleFileSelect(event) {

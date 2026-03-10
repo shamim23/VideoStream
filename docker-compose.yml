@@ -10,7 +10,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: video-backend-${INSTANCE_ID:-1}
     environment:
       - RUST_LOG=info
       - STORAGE_PATH=/app/storage
@@ -33,24 +32,22 @@ services:
       dockerfile: Dockerfile
     container_name: video-frontend
     environment:
-      - PUBLIC_API_BASE_URL=http://localhost:8080/api
       - PORT=3000
-    ports:
-      - "5173:3000"
     networks:
       - video-network
     depends_on:
-      - nginx
+      - backend
     restart: unless-stopped
 
   # Nginx Load Balancer (demonstrates horizontal scaling)
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
     container_name: video-nginx
     ports:
       - "8080:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - shared-storage:/app/storage:ro
     networks:
       - video-network
