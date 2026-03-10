@@ -15,7 +15,7 @@ const ALLOWED_VIDEO_MIME_TYPES: &[&str] = &[
     "video/ogg",
 ];
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ServiceError {
     BadRequest(String),
     UnsupportedMediaType(String),
@@ -202,4 +202,48 @@ fn parse_range(range_header: &str, file_size: u64) -> Result<(u64, u64), Service
     }
 
     Ok((start, end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_supported_video() {
+        // Valid videos
+        assert!(is_supported_video("test.mp4", "video/mp4"));
+        assert!(is_supported_video("test.webm", "video/webm"));
+        assert!(is_supported_video("test.mov", "video/quicktime"));
+
+        // Invalid extension
+        assert!(!is_supported_video("test.exe", "video/mp4"));
+        assert!(!is_supported_video("test.pdf", "application/pdf"));
+
+        // Invalid MIME type
+        assert!(!is_supported_video("test.mp4", "application/exe"));
+    }
+
+    #[test]
+    fn test_parse_range() {
+        // Absolute range
+        assert_eq!(parse_range("bytes=0-1023", 10000), Ok((0, 1023)));
+
+        // Open-ended range
+        assert_eq!(parse_range("bytes=1000-", 10000), Ok((1000, 9999)));
+
+        // Suffix range (last N bytes)
+        assert_eq!(parse_range("bytes=-1000", 10000), Ok((9000, 9999)));
+    }
+
+    #[test]
+    fn test_parse_range_errors() {
+        // Out of bounds
+        assert!(parse_range("bytes=10000-20000", 5000).is_err());
+
+        // Invalid range (start > end)
+        assert!(parse_range("bytes=500-100", 1000).is_err());
+
+        // Empty file
+        assert!(parse_range("bytes=0-100", 0).is_err());
+    }
 }
