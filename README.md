@@ -9,12 +9,16 @@ A minimal private video streaming service with clean architecture. Upload videos
 - **Shareable links** - UUID-based private URLs
 - **Smooth streaming** - HTTP Range requests for seeking/scrubbing
 - **Fast time-to-stream** - No transcoding delay, immediate playback
+- **HLS Adaptive Streaming** - Multi-quality transcoding for consistent playback (Docker mode)
+- **Horizontal Scaling** - Scale backend with `docker-compose up --scale backend=3`
 
 ## Quick Start
 
 ### Option 1: Docker (Recommended)
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) & Docker Compose
+
+Docker runs the full stack including Nginx load balancer, backend (scalable), frontend, and automatic HLS transcoding.
 
 **1. Clone and enter the project:**
 ```bash
@@ -27,25 +31,31 @@ docker-compose up --build
 ```
 
 **3. Open the app:**
-Navigate to `http://localhost:5173` in your browser.
+Navigate to `http://localhost:8080` in your browser.
 
-**To scale horizontally** (run 3 backend instances):
-```bash
-docker-compose up --scale backend=3
-```
+**Features in Docker mode:**
+- **HLS Adaptive Streaming** - Videos are automatically transcoded to multiple qualities (1080p/720p/480p/240p)
+- **Load Balancer** - Nginx distributes traffic across backend instances
+- **Horizontal Scaling** - Scale backend instances: `docker-compose up --scale backend=3`
+- **Shared Storage** - All instances access the same video files
 
 ### Option 2: Local Development
 
 **Prerequisites:**
 - [Rust](https://rustup.rs/) (stable toolchain)
 - [Node.js](https://nodejs.org/) 18+ and npm
+- [FFmpeg](https://ffmpeg.org/download.html) (optional, for HLS transcoding)
 
 > **Note:** If you just installed Rust and `cargo` is not found, either restart your terminal or run:
 > ```bash
 > source "$HOME/.cargo/env"
 > ```
 
-The local setup and Docker setup are independent - you can use either one. Local dev is faster for code changes, Docker is better for testing production-like deployment.
+**Local vs Docker:**
+- **Local dev** is faster for code changes but requires manual setup
+- **Docker** includes everything (FFmpeg, Nginx, etc.) and demonstrates production scaling
+
+**Note:** HLS transcoding (multi-quality streaming) requires FFmpeg. Install it or use Docker which includes it.
 
 **1. Start the backend:**
 ```bash
@@ -60,7 +70,7 @@ cd frontend
 npm install
 npm run dev
 ```
-The frontend will start on `http://localhost:5173`.
+The frontend will start on `http://localhost:5173` and proxy API requests to the backend.
 
 **3. Open the app:**
 Navigate to `http://localhost:5173` in your browser.
@@ -82,21 +92,28 @@ Navigate to `http://localhost:5173` in your browser.
 video-app/
 ├── backend/           # Rust (Axum) - API & streaming server
 │   ├── src/
-│   │   ├── main.rs        # Server entry point
-│   │   ├── api/           # HTTP handlers
-│   │   ├── service/       # Business logic
-│   │   ├── storage/       # Storage trait & LocalStorage impl
-│   │   └── domain/        # Video entity & models
-│   └── Cargo.toml
+│   │   ├── main.rs           # Server entry point
+│   │   ├── api/              # HTTP handlers
+│   │   ├── service/          # Business logic
+│   │   ├── storage/          # Storage trait & LocalStorage impl
+│   │   ├── transcode/        # HLS transcoding with FFmpeg
+│   │   └── domain/           # Video entity & models
+│   ├── Cargo.toml
+│   └── Dockerfile            # Multi-stage Docker build
 │
 ├── frontend/          # SvelteKit - Web UI
 │   ├── src/routes/
-│   │   ├── +page.svelte       # Upload page
-│   │   └── watch/[id]/        # Video player page
-│   └── package.json
+│   │   ├── +page.svelte          # Upload page with HLS player
+│   │   └── watch/[id]/           # Video player page
+│   ├── package.json
+│   └── Dockerfile              # Multi-stage Docker build
 │
+├── docker-compose.yml      # Complete stack orchestration
+├── nginx.conf              # Load balancer configuration
+├── nginx.Dockerfile        # Nginx container
 ├── architecture.md         # High-level system design
 ├── SYSTEM_DESIGN.md        # Detailed design with scaling path
+├── DOCKER_ARCHITECTURE.md  # Docker deployment documentation
 └── README.md               # This file
 ```
 
