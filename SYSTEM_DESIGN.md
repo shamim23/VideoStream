@@ -356,6 +356,167 @@ For cost optimization, lifecycle policies automatically move older content to ch
 
 ---
 
+## Docker Deployment Architecture
+
+### Overview
+
+Docker provides a production-ready deployment mechanism that demonstrates horizontal scaling capabilities. The architecture uses Docker Compose to orchestrate multiple services: Nginx as a load balancer, scalable backend instances, a frontend service, and shared storage volumes.
+
+### Deployment Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Docker Network                                   │
+│                                                                             │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐              │
+│  │   Nginx      │      │   Backend    │      │   Backend    │              │
+│  │ Load Balancer│◄────►│  Instance 1  │◄────►│  Instance 2  │  ...         │
+│  │   (Port 80)  │      │  (Port 3000) │      │  (Port 3000) │              │
+│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘              │
+│         │                     │                     │                       │
+│         │            ┌────────┴────────┐            │                       │
+│         │            │  Shared Volume  │            │                       │
+│         │            │  /app/storage   │            │                       │
+│         │            └────────┬────────┘            │                       │
+│         │                     │                     │                       │
+│         │            ┌────────┴────────┐            │                       │
+│         └───────────►│    Frontend     │◄───────────┘                       │
+│                      │   (Port 3000)   │                                    │
+│                      └─────────────────┘                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Responsibilities
+
+**Nginx Load Balancer**
+
+Nginx serves as the entry point and distributes traffic across backend instances. It uses Docker's internal DNS resolver to discover available backend containers dynamically. This enables automatic load distribution when backends scale up or down.
+
+Key configuration aspects:
+- Dynamic backend resolution via `resolver 127.0.0.11` (Docker DNS)
+- Round-robin load balancing across available instances
+- Health checks with automatic failover
+- Video-optimized settings: disabled buffering, large upload limits (1GB+)
+- Static file serving with appropriate cache headers
+
+**Backend Service**
+
+The backend runs as a stateless container based on a multi-stage Docker build. The builder stage uses the full Rust toolchain to compile the application, while the runtime stage uses a minimal Debian image containing only the compiled binary and SSL certificates.
+
+Characteristics:
+- Stateless design: any instance can handle any request
+- Health check endpoint for container orchestration
+- Shared storage volume for video persistence
+- Graceful shutdown handling for in-flight requests
+- Small image size (~50MB vs ~2GB with full toolchain)
+
+**Frontend Service**
+
+The SvelteKit frontend is built during the Docker build process and served by a Node.js runtime. This pre-compilation ensures consistent, optimized assets in production.
+
+**Shared Storage Volume**
+
+A Docker named volume provides persistent storage that survives container restarts and is accessible to all backend instances. This satisfies the requirement for shared state in a horizontally scaled deployment.
+
+### Demonstrating Horizontal Scaling
+
+The Docker deployment validates horizontal scaling through a simple command:
+
+```bash
+# Start with single backend instance
+docker-compose up -d
+
+# Scale to three backend instances
+docker-compose up -d --scale backend=3
+```
+
+When scaled, Nginx automatically discovers and distributes traffic across all backend containers. This demonstrates:
+
+1. **Stateless Architecture**: New backend instances require no configuration or state transfer
+2. **Dynamic Discovery**: Nginx finds backends via Docker DNS without configuration changes
+3. **Load Distribution**: Requests spread across available instances
+4. **Shared State**: All instances access the same storage volume
+
+Verifying load balancing:
+
+```bash
+# Check running containers
+docker-compose ps
+# Shows: nginx, backend_1, backend_2, backend_3, frontend
+
+# Monitor Nginx access logs
+docker-compose logs nginx | grep "upstream="
+# Shows requests distributed across different backend IPs
+```
+
+### Running the Deployment
+
+**Prerequisites**
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- No local Rust/Node installation required
+
+**Commands**
+
+```bash
+# Start entire stack
+docker-compose up -d
+
+# Access application
+open http://localhost:8080
+
+# Scale horizontally
+docker-compose up -d --scale backend=3
+
+# View logs
+docker-compose logs -f backend
+
+# Stop and remove
+docker-compose down
+```
+
+### Production Evolution
+
+**Phase 1: Docker Compose (Current)**
+- Single machine deployment
+- Demonstrates scaling concepts
+- Suitable for assessment and small deployments
+
+**Phase 2: Docker Swarm / Kubernetes**
+- Replace `docker-compose up --scale` with orchestrator-managed replicas
+- Add service mesh for advanced traffic management
+- Implement rolling deployments for zero-downtime updates
+
+**Phase 3: Cloud Container Services**
+- AWS ECS Fargate or Google Cloud Run for serverless containers
+- Auto-scaling based on CPU/memory metrics
+- Integrated with cloud load balancers and managed databases
+
+### Cost Comparison
+
+| Deployment | Monthly Cost (Estimate) |
+|------------|------------------------|
+| Local Development | $0 (developer machine) |
+| Docker Compose (VPS) | $25-50 (single VPS) |
+| Docker Compose (Multi-node) | $100-200 (3-5 nodes) |
+| Cloud-Native (ECS/K8s) | $200-500 (managed services) |
+
+The Docker approach provides a middle ground between local development and full cloud-native deployment, offering production-like scalability demonstration at manageable cost.
+
+### Detailed Documentation
+
+For complete Docker deployment documentation including:
+- Component deep-dives
+- Environment configuration
+- Troubleshooting guide
+- Commands cheat sheet
+- Production optimization
+
+**See: [`DOCKER_ARCHITECTURE.md`](./DOCKER_ARCHITECTURE.md)**
+
+---
+
 ## Summary
 
 The system design presents a clear evolutionary path from MVP to production. The current architecture prioritizes simplicity and fast time-to-stream while maintaining clean boundaries that enable future scaling. The Storage trait abstraction allows seamless migration from local filesystem to S3. HTTP Range Requests provide immediate functionality with a documented path to HLS adaptive streaming. The stateless design supports horizontal scaling through standard load balancing techniques.
